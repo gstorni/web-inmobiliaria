@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import type { TokkoSinglePropertyResponse, TransformedProperty } from "@/lib/tokko-types"
 
 const TOKKO_API_URL = "https://www.tokkobroker.com/api/v1"
 const TOKKO_API_KEY = process.env.TOKKO_API_KEY
@@ -19,10 +20,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       throw new Error(`TokkoBroker API error: ${response.status}`)
     }
 
-    const property = await response.json()
+    const property: TokkoSinglePropertyResponse = await response.json()
 
-    // Transform single property data
-    const transformedProperty = {
+    // Transform single property data with proper typing
+    const transformedProperty: TransformedProperty = {
       id: property.id,
       title: property.publication_title || property.type?.name || "Propiedad Industrial",
       description: property.description || "",
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       type: property.type?.name || "Industrial",
       operation: property.operation_type || "Venta",
       images:
-        property.photos?.map((photo: any) => ({
+        property.photos?.map((photo) => ({
           url: photo.image,
           description: photo.description || "",
         })) || [],
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         garages: property.garages || 0,
         age: property.age || 0,
         orientation: property.orientation || "",
-        amenities: property.tags?.map((tag: any) => tag.name) || [],
+        amenities: property.tags?.map((tag) => tag.name) || [],
       },
       contact: {
         agency: property.real_estate_agency?.name || "",
@@ -70,8 +71,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   } catch (error) {
     console.error("Error fetching property from TokkoBroker:", error)
 
-    // Return mock data if API fails
-    const mockProperty = {
+    // Return mock data if API fails with proper typing
+    const mockProperty: TransformedProperty = {
       id: Number.parseInt(params.id),
       title: "Galpón Industrial Premium",
       description:
