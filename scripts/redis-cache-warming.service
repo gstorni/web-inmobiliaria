@@ -1,0 +1,10 @@
+[Unit]
+Description=Redis Cache Warming Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=gonzalo
+WorkingDirectory=/home/gonzalo/Documents/WEB/web-agustinmieres_v3
+ExecStart=/usr/bin/npx tsx scripts/warm-redis-cache.ts --max=100 --quiet
+Environment=NODE_ENV=production

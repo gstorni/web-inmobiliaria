@@ -1,0 +1,10 @@
+[Unit]
+Description=Redis Cache Warming Timer
+Requires=redis-cache-warming.service
+
+[Timer]
+OnCalendar=*:0/120  # Every 2 hours
+Persistent=true
+
+[Install]
+WantedBy=timers.target

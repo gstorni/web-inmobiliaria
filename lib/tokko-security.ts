@@ -16,7 +16,7 @@ export class TokkoSecurityManager {
    * Validates that the HTTP method is read-only
    */
   validateHttpMethod(method: string): boolean {
-    return SECURITY_CONFIG.ALLOWED_HTTP_METHODS.includes(method as any)
+    return SECURITY_CONFIG.ALLOWED_HTTP_METHODS.includes(method as "GET")
   }
 
   /**
@@ -32,7 +32,7 @@ export class TokkoSecurityManager {
    * Prevents any write operations
    */
   preventWriteOperations(method: string): void {
-    if (SECURITY_CONFIG.FORBIDDEN_METHODS.includes(method as any)) {
+    if (SECURITY_CONFIG.FORBIDDEN_METHODS.includes(method as "POST" | "PUT" | "PATCH" | "DELETE")) {
       throw new Error(`Security violation: ${method} operations are forbidden. Read-only access only.`)
     }
   }
@@ -50,7 +50,7 @@ export class TokkoSecurityManager {
   /**
    * Sanitizes query parameters to prevent injection
    */
-  sanitizeQueryParams(params: Record<string, any>): Record<string, string> {
+  sanitizeQueryParams(params: Record<string, unknown>): Record<string, string> {
     const sanitized: Record<string, string> = {}
 
     for (const [key, value] of Object.entries(params)) {

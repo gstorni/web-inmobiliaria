@@ -17,6 +17,7 @@ interface PropertyFilters {
   operation?: string
   limit?: string
   offset?: string
+  [key: string]: string | undefined // Add index signature
 }
 
 export class SecureTokkoClient {
@@ -88,9 +89,20 @@ export class SecureTokkoClient {
     }
   }
 
+  // Convert PropertyFilters to Record<string, string>
+  private filtersToRecord(filters: PropertyFilters): Record<string, string> {
+    const record: Record<string, string> = {}
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined) {
+        record[key] = value
+      }
+    })
+    return record
+  }
+
   // All methods use the secure request wrapper with proper typing
   async getProperties(filters: PropertyFilters = {}): Promise<TokkoApiResponse<TokkoProperty>> {
-    return this.makeSecureRequest("/property/", "GET", filters)
+    return this.makeSecureRequest("/property/", "GET", this.filtersToRecord(filters))
   }
 
   async getProperty(id: number): Promise<TokkoSinglePropertyResponse> {

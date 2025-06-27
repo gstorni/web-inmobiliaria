@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, MapPin, Phone, Mail, Search } from "lucide-react"
+import { Building2, MapPin, Phone, Mail, Search, Zap, Database, Cloud } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { Header } from "@/components/header"
@@ -9,14 +9,76 @@ import { HeroSection } from "@/components/hero-section"
 import { OurCustomers } from "@/components/our-customers"
 import { StatisticsSection } from "@/components/statistics-section"
 
-export default function HomePage() {
+// Cache source indicator component
+function CacheSourceIndicator({ source, responseTime }: { source?: string; responseTime?: number }) {
+  if (!source) return null
+
+  const getSourceInfo = (source: string) => {
+    switch (source) {
+      case "redis":
+        return { icon: Zap, color: "text-green-600 bg-green-50", label: "Redis" }
+      case "postgres":
+        return { icon: Database, color: "text-blue-600 bg-blue-50", label: "PostgreSQL" }
+      case "api":
+        return { icon: Cloud, color: "text-orange-600 bg-orange-50", label: "API" }
+      default:
+        return { icon: Database, color: "text-gray-600 bg-gray-50", label: "Cache" }
+    }
+  }
+
+  const { icon: Icon, color, label } = getSourceInfo(source)
+
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${color}`}>
+      <Icon className="h-3 w-3" />
+      {label}
+      {responseTime && <span className="ml-1">({responseTime}ms)</span>}
+    </div>
+  )
+}
+
+// Fetch featured properties using hybrid cache
+async function getFeaturedProperties() {
+  try {
+    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+    const startTime = Date.now()
+
+    const response = await fetch(`${baseUrl}/api/properties/search?featured=true&limit=3`, {
+      next: { revalidate: 600 }, // Cache for 10 minutes
+    })
+
+    const responseTime = Date.now() - startTime
+
+    if (!response.ok) {
+      console.warn("Failed to fetch featured properties, using fallback")
+      return { properties: [], cacheSource: "fallback", responseTime }
+    }
+
+    const data = await response.json()
+
+    console.log(`🌟 Featured properties loaded from ${data.meta?.cacheSource || "unknown"} in ${responseTime}ms`)
+
+    return {
+      properties: data.properties || [],
+      cacheSource: data.meta?.cacheSource,
+      responseTime: data.meta?.responseTime || responseTime,
+    }
+  } catch (error) {
+    console.error("Error fetching featured properties:", error)
+    return { properties: [], cacheSource: "error", responseTime: 0 }
+  }
+}
+
+export default async function HomePage() {
+  const { properties: featuredProperties, cacheSource, responseTime } = await getFeaturedProperties()
+
   return (
     <div className="min-h-screen">
       <Header />
       <HeroSection />
 
       {/* Featured Properties */}
-      <FeaturedProperties />
+      <FeaturedProperties properties={featuredProperties} cacheSource={cacheSource} responseTime={responseTime} />
 
       {/* Services Section */}
       <ServicesSection />
@@ -36,56 +98,148 @@ export default function HomePage() {
   )
 }
 
-function FeaturedProperties() {
+function FeaturedProperties({
+  properties,
+  cacheSource,
+  responseTime,
+}: {
+  properties: any[]
+  cacheSource?: string
+  responseTime?: number
+}) {
+  // Fallback to placeholder data if no properties loaded
+  const displayProperties =
+    properties.length > 0
+      ? properties
+      : [
+          {
+            id: 1,
+            title: "Galpón Industrial Premium",
+            location: { name: "Zona Industrial Norte" },
+            description:
+              "Moderno galpón industrial de 3000 m² con oficinas administrativas, altura libre de 8m y acceso para camiones.",
+            mainPrice: { formatted: "USD 200,000", operation: "Venta" },
+            surface: 3000,
+            type: "Galpón Industrial",
+            images: [{ url: "/placeholder.svg?height=200&width=400" }],
+            referenceCode: "REF-001",
+            featured: true,
+            availableOperations: ["Venta"],
+          },
+          {
+            id: 2,
+            title: "Nave Industrial Moderna",
+            location: { name: "Parque Industrial Sur" },
+            description:
+              "Nave industrial de 4000 m² con tecnología de punta, sistemas de seguridad y amplias áreas de carga.",
+            mainPrice: { formatted: "USD 250,000", operation: "Venta" },
+            surface: 4000,
+            type: "Nave Industrial",
+            images: [{ url: "/placeholder.svg?height=200&width=400" }],
+            referenceCode: "REF-002",
+            featured: true,
+            availableOperations: ["Venta"],
+          },
+          {
+            id: 3,
+            title: "Depósito Logístico",
+            location: { name: "Zona Logística Este" },
+            description:
+              "Depósito logístico de 3500 m² ideal para distribución, con muelles de carga y sistemas automatizados.",
+            mainPrice: { formatted: "USD 300,000", operation: "Venta" },
+            surface: 3500,
+            type: "Depósito",
+            images: [{ url: "/placeholder.svg?height=200&width=400" }],
+            referenceCode: "REF-003",
+            featured: true,
+            availableOperations: ["Venta"],
+          },
+        ]
+
   return (
     <section className="py-16 bg-white dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">
-            Propiedades Destacadas
-          </h2>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">
+              Propiedades Destacadas
+            </h2>
+            <CacheSourceIndicator source={cacheSource} responseTime={responseTime} />
+          </div>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto transition-colors duration-300">
             Descubrí nuestras mejores opciones en propiedades industriales, seleccionadas especialmente para tu negocio.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[1, 2, 3].map((i) => (
+          {displayProperties.map((property, index) => (
             <Card
-              key={i}
+              key={property.id || index}
               className="overflow-hidden hover:shadow-lg transition-all duration-300 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
             >
               <div className="relative h-48">
                 <Image
-                  src={`/placeholder.svg?height=200&width=400&query=industrial warehouse ${i}`}
-                  alt={`Propiedad Industrial ${i}`}
+                  src={
+                    property.images?.[0]?.url ||
+                    `/placeholder.svg?height=200&width=400&query=industrial warehouse ${index + 1}`
+                  }
+                  alt={property.title}
                   fill
                   className="object-cover"
                 />
-                <Badge className="absolute top-4 left-4 bg-blue-600">Destacada</Badge>
+                {property.featured && (
+                  <Badge className="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-lg">
+                    ⭐ Destacada
+                  </Badge>
+                )}
+                <Badge className="absolute top-4 right-4 bg-gray-800 text-white text-xs">
+                  {property.referenceCode || `REF-${property.id}`}
+                </Badge>
               </div>
               <CardContent className="p-6">
                 <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-2 transition-colors duration-300">
                   <MapPin className="h-4 w-4 mr-1" />
-                  Zona Industrial Norte
+                  {property.location?.name || "Ubicación disponible"}
                 </div>
                 <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white transition-colors duration-300">
-                  Galpón Industrial Premium
+                  {property.title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">
-                  Moderno galpón industrial de {2500 + i * 500} m² con oficinas administrativas, altura libre de 8m y
-                  acceso para camiones.
+                <p className="text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300 line-clamp-3">
+                  {property.description}
                 </p>
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${
+                        property.mainPrice?.operation === "Venta"
+                          ? "border-green-500 text-green-700 bg-green-50"
+                          : "border-blue-500 text-blue-700 bg-blue-50"
+                      }`}
+                    >
+                      {property.mainPrice?.operation || "Venta"}
+                    </Badge>
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400 transition-colors duration-300">
+                      {property.mainPrice?.formatted || "Consulte precio"}
+                    </div>
+                  </div>
+                  {property.availableOperations?.length > 1 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
+                      También disponible:{" "}
+                      {property.availableOperations.filter((op) => op !== property.mainPrice?.operation).join(", ")}
+                    </div>
+                  )}
+                </div>
                 <div className="flex justify-between items-center mb-4">
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 transition-colors duration-300">
-                    USD {(150000 + i * 50000).toLocaleString()}
+                  <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
+                    {property.surface?.toLocaleString() || "0"} m²
                   </div>
                   <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                    {2500 + i * 500} m²
+                    {property.type || "Industrial"}
                   </div>
                 </div>
                 <Button className="w-full" variant="outline" asChild>
-                  <Link href={`/propiedades/${i}`}>Ver Detalles</Link>
+                  <Link href={`/propiedades/${property.id}`}>Ver Detalles</Link>
                 </Button>
               </CardContent>
             </Card>
